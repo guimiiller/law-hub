@@ -1,10 +1,18 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, models } from "mongoose";
 
-const DocumentSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User" },
-  title: String,
-  fileUrl: String,
-  createdAt: { type: Date, default: Date.now },
-});
+const DocumentSchema = new Schema(
+  {
+    title: String,
+    type: String,
+    clientId: { type: Schema.Types.ObjectId, ref: "Client", default: null },
+    processId: { type: Schema.Types.ObjectId, ref: "Case", default: null },
+    url: String,
+    description: String,
+    tags: [String],
+    fileUrl: String,
+    date: String,
+  },
+  { timestamps: true }
+);
 
-export default mongoose.models.Document || mongoose.model("Document", DocumentSchema);
+export default models.Document || mongoose.model("Document", DocumentSchema);

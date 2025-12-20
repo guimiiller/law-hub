@@ -1,11 +1,31 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, models } from "mongoose";
 
-const FinanceSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User" },
-  type: { type: String, enum: ["entrada", "saida"] },
-  description: String,
-  value: Number,
-  date: { type: Date, default: Date.now },
-});
+const FinanceSchema = new Schema(
+  {
+    type: {
+      type: String,
+      enum: ["entrada", "saida"],
+      required: true,
+    },
+    description: {
+      type: String,
+      trim: true,
+      required: true,
+    },
+    value: {
+      type: Number,
+      required: true,
+    },
+    date: {
+      type: Date,
+      required: true,
+    },
+    createdBy: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+  },
+  { timestamps: true }
+);
 
-export default mongoose.models.Finance || mongoose.model("Finance", FinanceSchema);
+export default models.Finance || mongoose.model("Finance", FinanceSchema);

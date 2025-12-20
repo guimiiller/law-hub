@@ -1,11 +1,15 @@
 import mongoose, { Schema } from "mongoose";
 
 const DeadlineSchema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: "User" },
-  title: String,
-  date: Date,
+  title: { type: String, required: true },
+  date: { type: Date, required: true },
   description: String,
-  completed: { type: Boolean, default: false },
+  processId: { type: Schema.Types.ObjectId, ref: "Process", default: null },
+  status: {
+    type: String,
+    enum: ["pendente", "concluido", "concluído"], 
+    default: "pendente",
+  },
   createdAt: { type: Date, default: Date.now },
 });
 

@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+
 
 const menuItems = [
   { key: "dashboard", label: "Início", icon: "/icons/dashboard.png" },
@@ -32,6 +37,34 @@ interface Client {
   createdAt?: string;
 }
 
+type Deadline = {
+  _id: string;
+  title: string;
+  date: string;
+  description?: string;
+  processId?: string;
+  status?: "pendente" | "concluído";
+};
+
+interface FinanceFormData {
+  type: string;
+  description: string;
+  value: number;
+  date: string;
+}
+
+interface DocumentFormData {
+  title: string;
+  type: string;
+  client: string;
+  clientId: string;
+  processId: string;
+  url: string;
+  description: string;
+  tags: string[];
+  file: File | null;
+  date: string;
+}
 
 export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -59,6 +92,255 @@ export default function DashboardPage() {
     phone: "",
     notes: "" 
   });
+
+    const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+    const [showDeadlineForm, setShowDeadlineForm] = useState(false);
+    const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
+    const [deadlineFormData, setDeadlineFormData] = useState({
+      title: "",
+      date: "",
+      description: "",
+      processId: "",
+      status: "pendente",
+    });
+
+    const [stats, setStats] = useState({
+      totalClients: 0,
+      totalCases: 0,
+      totalDeadlines: 0,
+    });
+
+    const [finances, setFinances] = useState<any[]>([]);
+    const [showFinanceForm, setShowFinanceForm] = useState(false);
+    const [editingFinance, setEditingFinance] = useState<any | null>(null);
+    const [financeFormData, setFinanceFormData] = useState<FinanceFormData>({
+      type: "entrada",
+      description: "",
+      value: 0,
+      date: "",
+    });
+
+    const initialDocumentFormData: DocumentFormData = {
+      title: "",
+      type: "",
+      client: "",
+      clientId: "",
+      processId: "",
+      url: "",
+      description: "",
+      tags: [],
+      file: null,
+      date: "",
+    };
+
+
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [showDocumentForm, setShowDocumentForm] = useState(false);
+    const [editingDocument, setEditingDocument] = useState<any | null>(null);
+    const [documentFormData, setDocumentFormData] = useState<DocumentFormData>(initialDocumentFormData);
+
+
+
+    async function handleDocumentSubmit(e: React.FormEvent) {
+      e.preventDefault();
+
+      const method = editingDocument ? "PUT" : "POST";
+      const url = editingDocument
+        ? `/api/documents/${editingDocument._id}`
+        : "/api/documents";
+
+
+      const formData = new FormData();
+      formData.append("title", documentFormData.title);
+      formData.append("type", documentFormData.type);
+      formData.append("description", documentFormData.description);
+      formData.append("tags", documentFormData.tags.join(","));
+      formData.append("clientId", documentFormData.clientId || "");
+      formData.append("processId", documentFormData.processId || "");
+
+      if (documentFormData.file) {
+        formData.append("file", documentFormData.file);
+      }
+
+      const res = await fetch(url, {
+        method,
+        body: formData,
+      });
+
+      if (!res.ok) {
+        alert("Erro ao salvar documento.");
+        return;
+      }
+
+      const saved = await res.json();
+
+      if (editingDocument) {
+        setDocuments((prev) =>
+          prev.map((d) => (d._id === saved._id ? saved : d))
+        );
+      } else {
+        setDocuments((prev) => [...prev, saved]);
+      }
+
+      setShowDocumentForm(false);
+      setEditingDocument(null);
+      setDocumentFormData(initialDocumentFormData);
+    }
+
+
+    function handleDocumentEdit(doc: any) {
+      setEditingDocument(doc);
+      setDocumentFormData({
+        title: doc.title || "",
+        type: doc.type || "",
+        client: doc.client || "",
+        clientId: doc.clientId || "",
+        processId: doc.processId || "",
+        url: doc.url || "",
+        description: doc.description || "",
+        tags: doc.tags || [],
+        file: null,
+        date: doc.date?.slice(0, 10) || "",
+      });
+
+      setShowDocumentForm(true);
+    }
+
+
+    async function handleDocumentDelete(id: string) {
+      if (!confirm("Tem certeza que deseja excluir este documento?")) return;
+
+      const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+
+      if (res.ok) {
+        setDocuments((prev) => prev.filter((d) => d._id !== id));
+      } else {
+        alert("Erro ao excluir documento.");
+      }
+    }
+
+    useEffect(() => {
+      async function fetchDocuments() {
+        try {
+          const res = await fetch("/api/documents");
+          const data = await res.json();
+          setDocuments(data);
+        } catch (err) {
+          console.error("Erro ao buscar documentos", err);
+        }
+      }
+
+      fetchDocuments();
+    }, []);
+
+
+    useEffect(() => {
+      async function fetchDashboardData() {
+        try {
+          const [casesRes, clientsRes, deadlinesRes] = await Promise.all([
+            fetch("/api/processes"),
+            fetch("/api/clients"),
+            fetch("/api/deadlines"),
+          ]);
+
+          const [casesData, clientsData, deadlinesData] = await Promise.all([
+            casesRes.json(),
+            clientsRes.json(),
+            deadlinesRes.json(),
+          ]);
+
+          setStats({
+            totalClients: clientsData.length,
+            totalCases: casesData.length,
+            totalDeadlines: deadlinesData.length,
+          });
+        } catch (err) {
+          console.error("Erro ao carregar dados do dashboard:", err);
+        }
+      }
+
+      fetchDashboardData();
+    }, []);
+
+    useEffect(() => {
+      async function fetchDeadlines() {
+        const res = await fetch("/api/deadlines");
+        const data = await res.json();
+        setDeadlines(data);
+      }
+      fetchDeadlines();
+    }, []);
+
+    async function handleDeadlineSubmit(e: React.FormEvent) {
+      e.preventDefault();
+      const method = editingDeadline ? "PUT" : "POST";
+      const url = editingDeadline ? `/api/deadlines/${editingDeadline._id}` : "/api/deadlines";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(deadlineFormData),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        if (editingDeadline) {
+          setDeadlines((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+          setEditingDeadline(null);
+        } else {
+          setDeadlines((prev) => [...prev, updated]);
+        }
+        setShowDeadlineForm(false);
+        setDeadlineFormData({ title: "", date: "", description: "", processId: "", status: "pendente" });
+      } else {
+        alert("Erro ao salvar prazo.");
+      }
+    }
+
+    async function handleDeadlineDelete(id: string) {
+      if (!confirm("Deseja realmente excluir este prazo?")) return;
+      const res = await fetch(`/api/deadlines/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setDeadlines((prev) => prev.filter((p) => p._id !== id));
+      } else {
+        alert("Erro ao excluir prazo.");
+      }
+    }
+
+    function handleDeadlineEdit(prazo: Deadline) {
+      setEditingDeadline(prazo);
+      setDeadlineFormData({
+        title: prazo.title,
+        date: prazo.date.slice(0, 16),
+        description: prazo.description || "",
+        processId: prazo.processId || "",
+        status: prazo.status || "pendente",
+      });
+      setShowDeadlineForm(true);
+    }
+
+
+    const calendarEvents = deadlines.map((prazo) => ({
+      id: prazo._id,
+      title: prazo.title,
+      start: prazo.date,
+      backgroundColor: prazo.status === "concluído" ? "#16a34a" : "#dc2626",
+      borderColor: prazo.status === "concluído" ? "#16a34a" : "#dc2626",
+    }));
+
+    function getUrgencyLevel(date: string) {
+      const now = new Date();
+      const deadlineDate = new Date(date);
+
+      const diffTime = deadlineDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) return "late";
+      if (diffDays <= 2) return "urgent";
+      if (diffDays <= 5) return "warning";
+      return "normal";
+    }
+
 
 
   const filteredCases = cases.filter(
@@ -181,6 +463,66 @@ export default function DashboardPage() {
     }
     fetchClients();
   }, []);
+
+  useEffect(() => {
+    async function fetchFinances() {
+      try {
+        const res = await fetch("/api/finances");
+        const data = await res.json();
+        setFinances(data);
+      } catch (err) {
+        console.error("Erro ao buscar registros financeiros:", err);
+      }
+    }
+    fetchFinances();
+  }, []);
+
+  async function handleFinanceSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const method = editingFinance ? "PUT" : "POST";
+    const url = editingFinance ? `/api/finances/${editingFinance._id}` : "/api/finances";
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(financeFormData),
+    });
+
+    if (res.ok) {
+      const updated = await res.json();
+      if (editingFinance) {
+        setFinances((prev) => prev.map((f) => (f._id === updated._id ? updated : f)));
+        setEditingFinance(null);
+      } else {
+        setFinances((prev) => [...prev, updated]);
+      }
+      setShowFinanceForm(false);
+      setFinanceFormData({ type: "entrada", description: "", value: 0, date: "" });
+    } else {
+      alert("Erro ao salvar registro financeiro.");
+    }
+  }
+
+  function handleFinanceEdit(item: any) {
+    setEditingFinance(item);
+    setFinanceFormData({
+      type: item.type,
+      description: item.description,
+      value: item.value,
+      date: item.date.slice(0, 10),
+    });
+    setShowFinanceForm(true);
+  }
+
+  async function handleFinanceDelete(id: string) {
+    if (!confirm("Deseja realmente excluir este registro?")) return;
+    const res = await fetch(`/api/finances/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setFinances((prev) => prev.filter((f) => f._id !== id));
+    } else {
+      alert("Erro ao excluir registro financeiro.");
+    }
+  }
 
   const renderContent = () => {
     switch (selectedPage) {
@@ -478,46 +820,527 @@ export default function DashboardPage() {
 
       case "prazos":
         return (
-          <section>
-            <h2 className="text-xl font-semibold mb-4 text-black flex items-center gap-2">
-              <Image src="/icons/calendarIcon.png" alt="Prazos" width={25} height={25} />
-              Prazos e Agenda
-            </h2>
-            <p className="text-gray-700">Aqui ficam seus compromissos e prazos importantes.</p>
-          </section>
+            <section>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-black flex items-center gap-2">
+                  <Image src="/icons/calendarIcon.png" alt="Prazos" width={25} height={25} />
+                  Prazos e Agenda
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowDeadlineForm(true);
+                    setEditingDeadline(null);
+                    setDeadlineFormData({
+                      title: "",
+                      date: "",
+                      description: "",
+                      processId: "",
+                      status: "pendente",
+                    });
+                  }}
+                  className="bg-black text-white px-4 py-3 rounded-lg cursor-pointer transition"
+                >
+                  Adicionar Prazo
+                </button>
+              </div>
+
+              <div className="bg-white rounded-2xl shadow-md p-4 mb-8">
+                <FullCalendar
+                  plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                  initialView="dayGridMonth"
+                  locale="pt-br"
+                  events={calendarEvents}
+                  headerToolbar={{
+                    left: "prev,next today",
+                    center: "title",
+                    right: "dayGridMonth,timeGridWeek,timeGridDay",
+                  }}
+                  eventClick={(info) => {
+                    const prazo = deadlines.find((d) => d._id === info.event.id);
+                    if (prazo) {
+                      handleDeadlineEdit(prazo);
+                    }
+                  }}
+                  height="auto"
+                />
+              </div>
+
+
+              {showDeadlineForm && (
+                <form
+                  onSubmit={handleDeadlineSubmit}
+                  className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-3"
+                >
+                  <h3 className="text-lg font-semibold text-black mb-2">
+                    {editingDeadline ? "Editar Prazo" : "Novo Prazo"}
+                  </h3>
+
+                  <input
+                    type="text"
+                    placeholder="Título"
+                    value={deadlineFormData.title}
+                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, title: e.target.value })}
+                    className="border p-2 rounded"
+                    required
+                  />
+                  <input
+                    type="datetime-local"
+                    value={deadlineFormData.date}
+                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, date: e.target.value })}
+                    className="border p-2 rounded"
+                    required
+                  />
+                  <textarea
+                    placeholder="Descrição"
+                    value={deadlineFormData.description}
+                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, description: e.target.value })}
+                    className="border p-2 rounded h-24 resize-none"
+                  />
+                  <select
+                    value={deadlineFormData.status}
+                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, status: e.target.value })}
+                    className="border p-2 rounded"
+                  >
+                    <option value="pendente">Pendente</option>
+                    <option value="concluído">Concluído</option>
+                  </select>
+
+                  <div className="flex gap-3">
+                    <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer">
+                      {editingDeadline ? "Salvar Alterações" : "Salvar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDeadlineForm(false);
+                        setEditingDeadline(null);
+                        setDeadlineFormData({ title: "", date: "", description: "", processId: "", status: "pendente" });
+                      }}
+                      className="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {deadlines.length === 0 ? (
+                  <p className="text-gray-600">Nenhum prazo cadastrado.</p>
+                ) : (
+                  deadlines.map((prazo) => {
+                    const urgency = getUrgencyLevel(prazo.date);
+
+                    return (
+                      <div
+                        key={prazo._id}
+                        className={`rounded-2xl shadow-lg p-6 transition border-l-4 hover:shadow-md
+                          ${
+                            urgency === "late"
+                              ? "border-red-600 bg-red-50"
+                              : urgency === "urgent"
+                              ? "border-orange-500 bg-orange-50"
+                              : urgency === "warning"
+                              ? "border-yellow-500 bg-yellow-50"
+                              : "border-gray-200 bg-white"
+                          }
+                        `}
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="text-black font-semibold flex items-center gap-2">
+                            <Image src="/icons/calendarIcon.png" alt="Prazo" width={20} height={20} />
+                            {prazo.title}
+                          </p>
+
+                          <span
+                            className={`text-xs font-semibold px-2 py-1 rounded-full
+                              ${
+                                urgency === "late"
+                                  ? "bg-red-600 text-white"
+                                  : urgency === "urgent"
+                                  ? "bg-orange-500 text-white"
+                                  : urgency === "warning"
+                                  ? "bg-yellow-400 text-black"
+                                  : "bg-gray-200 text-gray-700"
+                              }
+                            `}
+                          >
+                            {urgency === "late"
+                              ? "ATRASADO"
+                              : urgency === "urgent"
+                              ? "URGENTE"
+                              : urgency === "warning"
+                              ? "ATENÇÃO"
+                              : "NO PRAZO"}
+                          </span>
+                        </div>
+
+                        <p className="text-gray-500 text-sm mt-1">
+                          Data: {new Date(prazo.date).toLocaleString("pt-BR")}
+                        </p>
+
+                        <p className="text-gray-500 text-sm mt-1">
+                          Status: {prazo.status}
+                        </p>
+
+                        {prazo.description && (
+                          <p className="text-gray-600 mt-2 whitespace-pre-line">
+                            {prazo.description}
+                          </p>
+                        )}
+
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            onClick={() => handleDeadlineEdit(prazo)}
+                            className="bg-black text-white px-3 py-1 rounded-lg"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDeadlineDelete(prazo._id)}
+                            className="bg-black text-white px-3 py-1 rounded-lg"
+                          >
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </section>
         );
+        case "financeiro":
+          return (
+            <section>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-black flex items-center gap-2">
+                  <Image src="/icons/icons8-cifrão-100 (1).png" alt="Financeiro" width={25} height={25} />
+                  Financeiro
+                </h2>
+
+                <button
+                  onClick={() => {
+                    setShowFinanceForm(true);
+                    setEditingFinance(null);
+                    setFinanceFormData({ type: "entrada", description: "", value: 0, date: "" });
+                  }}
+                  className="bg-black text-white px-4 py-3 rounded-lg cursor-pointer transition"
+                >
+                  Adicionar Registro
+                </button>
+              </div>
+
+              {showFinanceForm && (
+                <form
+                  onSubmit={handleFinanceSubmit}
+                  className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-3"
+                >
+                  <h3 className="text-lg font-semibold text-black mb-2">
+                    {editingFinance ? "Editar Registro" : "Novo Registro"}
+                  </h3>
+
+                  <select
+                    value={financeFormData.type}
+                    onChange={(e) => setFinanceFormData({ ...financeFormData, type: e.target.value })}
+                    className="border p-2 rounded"
+                  >
+                    <option value="entrada">Entrada</option>
+                    <option value="saida">Saída</option>
+                  </select>
+
+                  <input
+                    type="text"
+                    placeholder="Descrição"
+                    value={financeFormData.description}
+                    onChange={(e) => setFinanceFormData({ ...financeFormData, description: e.target.value })}
+                    className="border p-2 rounded"
+                    required
+                  />
+
+                  <input
+                    type="number"
+                    placeholder="Valor"
+                    value={financeFormData.value}
+                    onChange={(e) => setFinanceFormData({ ...financeFormData, value: parseFloat(e.target.value) })}
+                    className="border p-2 rounded"
+                    required
+                  />
+
+                  <input
+                    type="date"
+                    value={financeFormData.date}
+                    onChange={(e) => setFinanceFormData({ ...financeFormData, date: e.target.value })}
+                    className="border p-2 rounded"
+                  />
+
+                  <div className="flex gap-3">
+                    <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer">
+                      {editingFinance ? "Salvar Alterações" : "Salvar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowFinanceForm(false);
+                        setEditingFinance(null);
+                        setFinanceFormData({ type: "entrada", description: "", value: 0, date: "" });
+                      }}
+                      className="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {finances.length === 0 ? (
+                  <p className="text-gray-600">Nenhum registro financeiro encontrado.</p>
+                ) : (
+                  finances.map((item) => (
+                    <div
+                      key={item._id}
+                      className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition"
+                    >
+                      <p className="text-black font-semibold flex items-center gap-2">
+                        {item.type === "entrada" ? "💰 Entrada" : "📤 Saída"}
+                      </p>
+                      <p className="text-gray-500 text-sm mt-1">Descrição: {item.description}</p>
+                      <p className="text-gray-500 text-sm mt-1">Valor: R$ {item.value.toFixed(2)}</p>
+                      <p className="text-gray-500 text-sm mt-1">
+                        Data: {new Date(item.date).toLocaleDateString("pt-BR")}
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => handleFinanceEdit(item)}
+                          className="bg-black text-white px-3 py-1 rounded-lg"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleFinanceDelete(item._id!)}
+                          className="bg-black text-white px-3 py-1 rounded-lg"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          );
+
+        case "documentos":
+          return (
+            <section>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-black flex items-center gap-2">
+                  <Image src="/icons/documentsIcon.png" alt="Documentos" width={25} height={25} />
+                  Documentos
+                </h2>
+
+                <button
+                  onClick={() => {
+                    setShowDocumentForm(true);
+                    setEditingDocument(null);
+                    setDocumentFormData(initialDocumentFormData);
+                  }}
+                  className="bg-black text-white px-4 py-3 rounded-lg cursor-pointer"
+                >
+                  Adicionar Documento
+                </button>
+              </div>
+
+              {showDocumentForm && (
+                <form
+                  onSubmit={handleDocumentSubmit}
+                  className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-3"
+                  encType="multipart/form-data"
+                >
+                  <h3 className="text-lg font-semibold text-black mb-2">
+                    {editingDocument ? "Editar Documento" : "Novo Documento"}
+                  </h3>
+
+                  <input
+                    type="text"
+                    placeholder="Título"
+                    value={documentFormData.title}
+                    onChange={(e) => setDocumentFormData({ ...documentFormData, title: e.target.value })}
+                    className="border p-2 rounded"
+                    required
+                  />
+
+                  <select
+                    value={documentFormData.type}
+                    onChange={(e) => setDocumentFormData({ ...documentFormData, type: e.target.value })}
+                    className="border p-2 rounded"
+                  >
+                    <option value="petição">Petição</option>
+                    <option value="contrato">Contrato</option>
+                    <option value="prova">Prova</option>
+                    <option value="procuração">Procuração</option>
+                    <option value="documento pessoal">Documento pessoal</option>
+                    <option value="outros">Outros</option>
+                  </select>
+
+                  <textarea
+                    placeholder="Descrição"
+                    value={documentFormData.description}
+                    onChange={(e) => setDocumentFormData({ ...documentFormData, description: e.target.value })}
+                    className="border p-2 rounded h-24 resize-none"
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Tags (separadas por vírgula)"
+                    value={documentFormData.tags.join(",")}
+                    onChange={(e) =>
+                      setDocumentFormData({
+                        ...documentFormData,
+                        tags: e.target.value.split(",").map(t => t.trim())
+                      })
+                    }
+                    className="border p-2 rounded"
+                  />
+
+
+                  <select
+                    value={documentFormData.clientId}
+                    onChange={(e) => setDocumentFormData({ ...documentFormData, clientId: e.target.value })}
+                    className="border p-2 rounded"
+                  >
+                    <option value="">Vincular Cliente (opcional)</option>
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
+                  </select>
+
+
+                  <select
+                    value={documentFormData.processId}
+                    onChange={(e) => setDocumentFormData({ ...documentFormData, processId: e.target.value })}
+                    className="border p-2 rounded"
+                  >
+                    <option value="">Vincular Processo (opcional)</option>
+                    {cases.map((p) => (
+                      <option key={p._id} value={p._id}>{p.title}</option>
+                    ))}
+                  </select>
+
+
+                  <input
+                    type="file"
+                    onChange={(e) => setDocumentFormData({ ...documentFormData, file: e.target.files?.[0] || null })}
+                    className="border p-2 rounded"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                    required={!editingDocument}
+                  />
+
+                  <div className="flex gap-3">
+                    <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg">
+                      {editingDocument ? "Salvar alterações" : "Salvar"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDocumentForm(false)}
+                      className="bg-gray-400 text-white px-4 py-2 rounded-lg"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {documents.length === 0 ? (
+                  <p className="text-gray-600">Nenhum documento encontrado.</p>
+                ) : (
+                  documents.map((doc) => (
+                    <div
+                      key={doc._id}
+                      className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition"
+                    >
+                      <p className="text-black font-semibold flex items-center gap-2">
+                        <Image src="/icons/documentsIcon.png" alt="" width={20} height={20} />
+                        {doc.title}
+                      </p>
+
+                      <p className="text-gray-500 text-sm mt-1">Tipo: {doc.type}</p>
+
+                      {doc.clientId && (
+                        <p className="text-gray-500 text-sm">Cliente: {doc.clientId?.name}</p>
+                      )}
+
+                      {doc.processId && (
+                        <p className="text-gray-500 text-sm">Processo: {doc.processId?.title}</p>
+                      )}
+
+                      <div className="flex gap-2 mt-3">
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          className="bg-black text-white px-3 py-1 rounded-lg"
+                        >
+                          Baixar
+                        </a>
+
+                        <button
+                          onClick={() => handleDocumentEdit(doc)}
+                          className="bg-black text-white px-3 py-1 rounded-lg"
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          onClick={() => handleDocumentDelete(doc._id)}
+                          className="bg-black text-white px-3 py-1 rounded-lg"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          );
+
 
       default:
         return (
           <section>
-            <h1 className="text-2xl font-semibold mb-2 text-black">Bem-vindo de volta!</h1>
+            <h1 className="text-2xl font-semibold mb-2 text-black">
+              Bem-vindo de volta!
+            </h1>
             <p className="text-gray-600 mb-8">
               Aqui você acompanha tudo o que importa no seu escritório.
             </p>
 
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition">
-                <p className="text-black font-semibold flex">
-                  <Image src={"/icons/calendarIcon.png"} alt="Calendar Icon" width={25} height={25} className="mr-1" />
-                  Prazos de hoje
+                <p className="text-black font-semibold flex items-center gap-2">
+                  <Image src="/icons/calendarIcon.png" alt="Calendar Icon" width={25} height={25} />
+                  Prazos cadastrados
                 </p>
-                <p className="text-gray-500 text-sm mt-1">2 pendentes</p>
+                <p className="text-gray-500 text-sm mt-1">{stats.totalDeadlines} no total</p>
               </div>
 
               <div className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition">
-                <p className="text-black font-semibold flex">
-                  <Image src={"/icons/activeProcess.png"} alt="Active Process" width={25} height={25} className="mr-1" />
+                <p className="text-black font-semibold flex items-center gap-2">
+                  <Image src="/icons/activeProcess.png" alt="Active Process" width={25} height={25} />
                   Processos ativos
                 </p>
-                <p className="text-gray-500 text-sm mt-1">14 em andamento</p>
+                <p className="text-gray-500 text-sm mt-1">{stats.totalCases} em andamento</p>
               </div>
 
               <div className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition">
-                <p className="text-black font-semibold flex">
-                  <Image src={"/icons/clientsIcon.png"} alt="Clients Icon" width={25} height={25} className="mr-1" />
+                <p className="text-black font-semibold flex items-center gap-2">
+                  <Image src="/icons/clientsIcon.png" alt="Clients Icon" width={25} height={25} />
                   Clientes
                 </p>
-                <p className="text-gray-500 text-sm mt-1">8 cadastrados</p>
+                <p className="text-gray-500 text-sm mt-1">{stats.totalClients} cadastrados</p>
               </div>
             </section>
           </section>
