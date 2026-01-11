@@ -5,7 +5,7 @@ import Case from "@/models/Case";
 export async function GET() {
   try {
     await connectDB();
-    const cases = await Case.find().populate("clientId"); // <--- AQUI
+    const cases = await Case.find().populate("clientId");
     return NextResponse.json(cases, { status: 200 });
   } catch (error) {
     console.error("Error fetching cases:", error);
