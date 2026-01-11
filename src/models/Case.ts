@@ -8,6 +8,7 @@ const CaseSchema = new Schema({
   status: String,
   court: String,
   createdAt: { type: Date, default: Date.now },
+  name: String
 });
 
 export default mongoose.models.Case || mongoose.model("Case", CaseSchema);

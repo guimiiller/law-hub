@@ -1,5 +1,8 @@
 "use client";
 
+
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,6 +10,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import { signOut } from "next-auth/react";
 
 
 const menuItems = [
@@ -25,6 +29,7 @@ interface Case {
   number: string;
   status: string;
   court: string;
+  clientId?: { _id: string; name: string } | string;
   createdAt?: string;
 }
 
@@ -67,6 +72,10 @@ interface DocumentFormData {
 }
 
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedPage, setSelectedPage] = useState("dashboard");
   const [showForm, setShowForm] = useState(false);
@@ -76,6 +85,7 @@ export default function DashboardPage() {
     number: "",
     status: "",
     court: "",
+    clientId: "", 
   });
   const [cases, setCases] = useState<Case[]>([]);
   const [showFilter, setShowFilter] = useState(false);
@@ -524,6 +534,24 @@ export default function DashboardPage() {
     }
   }
 
+    useEffect(() => {
+    if (status === "unauthenticated") {
+        router.replace("/login");
+      }
+    }, [status, router]);
+
+    if (status === "loading") {
+      return (
+        <div className="h-screen flex items-center justify-center">
+          <p>Carregando...</p>
+        </div>
+      );
+    }
+
+    if (!session) {
+      return null;
+    }
+
   const renderContent = () => {
     switch (selectedPage) {
       case "processos":
@@ -599,6 +627,22 @@ export default function DashboardPage() {
                   className="border p-2 rounded"
                   required
                 />
+
+                <select
+                  value={typeof formData.clientId === "object" ? formData.clientId._id : formData.clientId}
+                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                  className="border p-2 rounded"
+                >
+                  <option value="">Selecione o Cliente</option>
+
+                  {clients.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+
                 <input
                   type="text"
                   placeholder="Status"
@@ -650,6 +694,11 @@ export default function DashboardPage() {
                         height={15}
                       />
                       {proc.title}
+                    </p>
+                    <p><strong>Cliente:</strong> 
+                      {typeof proc.clientId === "string" 
+                        ? "Carregando..." 
+                        : proc.clientId?.name}
                     </p>
                     <p className="text-gray-500 text-sm mt-1">Número: {proc.number}</p>
                     <p className="text-gray-500 text-sm mt-1">Status: {proc.status}</p>
@@ -1319,7 +1368,7 @@ export default function DashboardPage() {
             </p>
 
             <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition">
+              <div className="bg-transparent rounded-2xl shadow-2xl p-6 hover:shadow-md transition">
                 <p className="text-black font-semibold flex items-center gap-2">
                   <Image src="/icons/calendarIcon.png" alt="Calendar Icon" width={25} height={25} />
                   Prazos cadastrados
@@ -1327,7 +1376,7 @@ export default function DashboardPage() {
                 <p className="text-gray-500 text-sm mt-1">{stats.totalDeadlines} no total</p>
               </div>
 
-              <div className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition">
+              <div className="bg-transparent rounded-2xl shadow-2xl p-6 hover:shadow-md transition">
                 <p className="text-black font-semibold flex items-center gap-2">
                   <Image src="/icons/activeProcess.png" alt="Active Process" width={25} height={25} />
                   Processos ativos
@@ -1335,7 +1384,7 @@ export default function DashboardPage() {
                 <p className="text-gray-500 text-sm mt-1">{stats.totalCases} em andamento</p>
               </div>
 
-              <div className="bg-transparent rounded-2xl shadow-lg p-6 hover:shadow-md transition">
+              <div className="bg-transparent rounded-2xl shadow-2xl p-6 hover:shadow-md transition">
                 <p className="text-black font-semibold flex items-center gap-2">
                   <Image src="/icons/clientsIcon.png" alt="Clients Icon" width={25} height={25} />
                   Clientes
@@ -1354,7 +1403,7 @@ export default function DashboardPage() {
       <aside
         className={`${
           menuOpen ? "w-56" : "w-20"
-        } bg-transparent shadow-lg transition-all duration-300 flex flex-col items-center py-6 relative`}
+        } bg-transparent shadow-2xl transition-all duration-300 flex flex-col items-center py-6 relative m-5 rounded-3xl `}
       >
         <button
           onClick={() => setMenuOpen(!menuOpen)}
@@ -1413,6 +1462,26 @@ export default function DashboardPage() {
               )}
             </div>
           ))}
+        </div>
+
+        <div className="mt-auto w-full px-4 pb-6">
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className={`flex items-center w-full h-12 rounded-xl transition-all
+              ${menuOpen ? "gap-4 px-4 justify-start" : "justify-center"}
+              bg-black text-white cursor-pointer`}
+          >
+            <Image
+              src="/icons/logoutIcon.png"
+              alt="Logout"
+              width={24}
+              height={24}
+            />
+
+            {menuOpen && (
+              <span className="text-sm font-medium">Sair</span>
+            )}
+          </button>
         </div>
       </aside>
 
