@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongoose";
 import Document from "@/models/Document";
 import { writeFile } from "fs/promises";
 import path from "path";
+import { auth } from "@/lib/authOptions";
 
 interface RouteParams {
   params: {
@@ -10,30 +11,47 @@ interface RouteParams {
   };
 }
 
-
 export async function GET(req: Request, { params }: RouteParams) {
   try {
     await connectDB();
 
-    const doc = await Document.findById(params.id)
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    const doc = await Document.findOne({
+      _id: params.id,
+      userId: session.user.id, 
+    })
       .populate("clientId")
       .populate("processId");
 
     if (!doc) {
-      return NextResponse.json({ error: "Documento não encontrado" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Documento não encontrado" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(doc);
   } catch (error) {
     console.error("Erro ao buscar documento:", error);
-    return NextResponse.json({ error: "Erro ao buscar documento" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro ao buscar documento" },
+      { status: 500 }
+    );
   }
 }
-
 
 export async function PUT(req: Request, { params }: RouteParams) {
   try {
     await connectDB();
+
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
 
     const form = await req.formData();
 
@@ -59,7 +77,6 @@ export async function PUT(req: Request, { params }: RouteParams) {
       processId,
     };
 
-
     if (file && file.size > 0) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -70,12 +87,23 @@ export async function PUT(req: Request, { params }: RouteParams) {
       updateData.fileUrl = `/uploads/${file.name}`;
     }
 
-
-    const updated = await Document.findByIdAndUpdate(params.id, updateData, {
-      new: true,
-    })
+    const updated = await Document.findOneAndUpdate(
+      {
+        _id: params.id,
+        userId: session.user.id, 
+      },
+      updateData,
+      { new: true }
+    )
       .populate("clientId")
       .populate("processId");
+
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Documento não encontrado" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -87,14 +115,33 @@ export async function PUT(req: Request, { params }: RouteParams) {
   }
 }
 
-
 export async function DELETE(req: Request, { params }: RouteParams) {
   try {
     await connectDB();
-    await Document.findByIdAndDelete(params.id);
+
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    const deleted = await Document.findOneAndDelete({
+      _id: params.id,
+      userId: session.user.id, 
+    });
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: "Documento não encontrado" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao deletar documento:", error);
-    return NextResponse.json({ error: "Erro ao deletar documento" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro ao deletar documento" },
+      { status: 500 }
+    );
   }
 }

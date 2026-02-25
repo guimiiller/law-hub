@@ -3,37 +3,41 @@ import { connectDB } from "@/lib/mongoose";
 import Client from "@/models/Client";
 
 
+import { auth } from "@/lib/authOptions";
+
 export async function GET() {
   await connectDB();
 
-  try {
-    const clients = await Client.find().sort({ createdAt: -1 });
-    return NextResponse.json(clients);
-  } catch (error) {
-    return NextResponse.json({ error: "Erro ao buscar clientes" }, { status: 500 });
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
-}
 
+  const clients = await Client.find({
+    userId: session.user.id,
+  }).sort({ createdAt: -1 });
+
+  return NextResponse.json(clients);
+}
 
 export async function POST(req: Request) {
   await connectDB();
 
-  try {
-    const data = await req.json();
-
-
-    const clientData = {
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      notes: data.notes || "", 
-      userId: data.userId, 
-    };
-
-    const client = await Client.create(clientData);
-    return NextResponse.json(client);
-  } catch (error) {
-    return NextResponse.json({ error: "Erro ao criar cliente" }, { status: 500 });
+  const session = await auth();
+  if (!session) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
+
+  const data = await req.json();
+
+  const client = await Client.create({
+    name: data.name,
+    email: data.email,
+    phone: data.phone,
+    address: data.address,
+    notes: data.notes || "",
+    userId: session.user.id, 
+  });
+
+  return NextResponse.json(client);
 }

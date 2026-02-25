@@ -1,40 +1,87 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongoose";
 import Deadline from "@/models/Deadline";
+import { auth } from "@/lib/authOptions";
 
-export async function PUT(req: Request, context: { params: Promise<{ id: string }> }) {
-  const { id } = await context.params; 
+export async function PUT(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+
   try {
     await connectDB();
+
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
     const data = await req.json();
 
     if (!data.processId || data.processId === "") {
       delete data.processId;
     }
 
-    const updatedDeadline = await Deadline.findByIdAndUpdate(id, data, { new: true });
+    const updated = await Deadline.findOneAndUpdate(
+      {
+        _id: id, 
+        userId: session.user.id, 
+      },
+      data,
+      { new: true }
+    );
 
-    if (!updatedDeadline) {
-      return NextResponse.json({ error: "Prazo não encontrado" }, { status: 404 });
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Prazo não encontrado" },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json(updatedDeadline);
+    return NextResponse.json(updated);
   } catch (err) {
     console.error("Erro ao atualizar prazo:", err);
-    return NextResponse.json({ error: "Erro ao atualizar prazo" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro ao atualizar prazo" },
+      { status: 500 }
+    );
   }
 }
 
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  await connectDB();
   try {
-    const deleted = await Deadline.findByIdAndDelete(params.id);
-    if (!deleted) {
-      return NextResponse.json({ error: "Prazo não encontrado" }, { status: 404 });
+    await connectDB();
+
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
-    return NextResponse.json({ message: "Prazo removido com sucesso" });
+
+    const deleted = await Deadline.findOneAndDelete({
+      _id: id,
+      userId: session.user.id, 
+    });
+
+    if (!deleted) {
+      return NextResponse.json(
+        { error: "Prazo não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      message: "Prazo removido com sucesso",
+    });
   } catch (err) {
-    return NextResponse.json({ error: "Erro ao remover prazo" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erro ao remover prazo" },
+      { status: 500 }
+    );
   }
 }

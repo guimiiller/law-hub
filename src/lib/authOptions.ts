@@ -29,17 +29,37 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+
   pages: {
     signIn: "/login",
   },
-  session: { strategy: "jwt" as const },
-  secret: process.env.NEXTAUTH_SECRET,
-};
 
+  session: {
+    strategy: "jwt",
+  },
+
+  secret: process.env.NEXTAUTH_SECRET,
+
+  // 🔥 AQUI ESTÁ A PARTE MAIS IMPORTANTE
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
+};
 
 const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
-
 
 export async function auth() {
   return await getServerSession(authOptions);

@@ -3,12 +3,22 @@ import { connectDB } from "@/lib/mongoose";
 import Document from "@/models/Document";
 import { writeFile } from "fs/promises";
 import path from "path";
+import { auth } from "@/lib/authOptions";
+
 
 
 export async function GET() {
   try {
     await connectDB();
-    const docs = await Document.find()
+
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    const docs = await Document.find({
+      userId: session.user.id, 
+    })
       .populate("clientId")
       .populate("processId")
       .sort({ createdAt: -1 });
@@ -24,12 +34,17 @@ export async function GET() {
 }
 
 
+
 export async function POST(req: Request) {
   try {
     await connectDB();
 
-    const form = await req.formData();
+    const session = await auth();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
 
+    const form = await req.formData();
 
     const file = form.get("file") as File | null;
     let fileUrl = "";
@@ -44,7 +59,6 @@ export async function POST(req: Request) {
       fileUrl = `/uploads/${file.name}`;
     }
 
- 
     const title = form.get("title") as string;
     const type = form.get("type") as string;
     const description = form.get("description") as string;
@@ -64,8 +78,8 @@ export async function POST(req: Request) {
       clientId,
       processId,
       fileUrl,
+      userId: session.user.id, // ✅ SALVA O DONO
     });
-
 
     const populated = await Document.findById(newDoc._id)
       .populate("clientId")
