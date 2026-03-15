@@ -14,10 +14,40 @@ export default function Login() {
     password: "",
   });
 
+  const [errors, setErrors] = useState({
+    email: "",
+    password: "",
+    general: "",
+  });
+
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const newErrors = {
+      email: "",
+      password: "",
+      general: "",
+    };
+
+    if (!form.email.trim()) {
+      newErrors.email = "O e-mail é obrigatório";
+    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+      newErrors.email = "E-mail inválido";
+    }
+
+    if (!form.password.trim()) {
+      newErrors.password = "A senha é obrigatória";
+    }
+
+    if (newErrors.email || newErrors.password) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({ email: "", password: "", general: "" });
+
     setLoading(true);
 
     const res = await signIn("credentials", {
@@ -31,10 +61,13 @@ export default function Login() {
     if (res?.ok) {
       router.push("/dashboard");
     } else {
-      alert("E-mail ou senha inválidos");
+      setErrors({
+        email: "",
+        password: "",
+        general: "E-mail ou senha inválidos",
+      });
     }
   };
-
   return (
     <>
       <HeaderLogo />
@@ -46,23 +79,35 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <input
-              type="email"
-              placeholder="E-mail"
-              className="w-full px-3 py-2 rounded-lg border border-black text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 transition"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
+                type="email"
+                placeholder="E-mail"
+                className={`w-full px-3 py-2 rounded-lg border text-slate-900 placeholder-slate-400 focus:outline-none transition
+                  ${errors.email ? "border-red-500" : "border-black"}
+                `}
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
 
-            <input
-              type="password"
-              placeholder="Senha"
-              className="w-full px-3 py-2 rounded-lg border border-black text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 transition"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-            />
+              {errors.email && (
+                <p className="text-red-500 text-sm">
+                  {errors.email}
+                </p>
+              )}
+              <input
+                type="password"
+                placeholder="Senha"
+                className={`w-full px-3 py-2 rounded-lg border text-slate-900 placeholder-slate-400 focus:outline-none transition
+                  ${errors.password ? "border-red-500" : "border-black"}
+                `}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+              />
 
+              {errors.password && (
+                <p className="text-red-500 text-sm">
+                  {errors.password}
+                </p>
+              )}
             <button
               type="submit"
               disabled={loading}
@@ -70,6 +115,11 @@ export default function Login() {
             >
               {loading ? "Entrando..." : "Entrar"}
             </button>
+            {errors.general && (
+              <p className="text-red-500 text-sm text-center mt-1">
+                {errors.general}
+              </p>
+            )}
           </form>
 
           <div className="text-center mt-6">

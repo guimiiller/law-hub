@@ -78,7 +78,7 @@ export async function POST(req: Request) {
       clientId,
       processId,
       fileUrl,
-      userId: session.user.id, // ✅ SALVA O DONO
+      userId: session.user.id, 
     });
 
     const populated = await Document.findById(newDoc._id)

@@ -102,7 +102,10 @@ export default function DashboardPage() {
     phone: "",
     notes: "" 
   });
-
+    const [clientErrors, setClientErrors] = useState<any>({});
+    const [deadlineErrors, setDeadlineErrors] = useState<any>({});
+    const [financeErrors, setFinanceErrors] = useState<any>({});
+    
     const [deadlines, setDeadlines] = useState<Deadline[]>([]);
     const [showDeadlineForm, setShowDeadlineForm] = useState(false);
     const [editingDeadline, setEditingDeadline] = useState<Deadline | null>(null);
@@ -283,26 +286,73 @@ export default function DashboardPage() {
 
     async function handleDeadlineSubmit(e: React.FormEvent) {
       e.preventDefault();
-      const method = editingDeadline ? "PUT" : "POST";
-      const url = editingDeadline ? `/api/deadlines/${editingDeadline._id}` : "/api/deadlines";
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(deadlineFormData),
-      });
+      const errors: any = {};
 
-      if (res.ok) {
+      // Validação título
+      if (!deadlineFormData.title?.trim()) {
+        errors.title = "O título é obrigatório.";
+      }
+
+      // Validação data
+      if (!deadlineFormData.date) {
+        errors.date = "A data é obrigatória.";
+      } else {
+        const selectedDate = new Date(deadlineFormData.date);
+        const now = new Date();
+
+        if (selectedDate < now) {
+          errors.date = "A data não pode ser no passado.";
+        }
+      }
+
+      // Se houver erro, interrompe envio
+      if (Object.keys(errors).length > 0) {
+        setDeadlineErrors(errors);
+        return;
+      }
+
+      setDeadlineErrors({});
+
+      try {
+        const method = editingDeadline ? "PUT" : "POST";
+        const url = editingDeadline
+          ? `/api/deadlines/${editingDeadline._id}`
+          : "/api/deadlines";
+
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(deadlineFormData), // corrigido aqui
+        });
+
+        if (!res.ok) {
+          throw new Error("Erro na requisição");
+        }
+
         const updated = await res.json();
+
         if (editingDeadline) {
-          setDeadlines((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+          setDeadlines((prev) =>
+            prev.map((p) => (p._id === updated._id ? updated : p))
+          );
           setEditingDeadline(null);
         } else {
           setDeadlines((prev) => [...prev, updated]);
         }
+
+        // Resetar form
         setShowDeadlineForm(false);
-        setDeadlineFormData({ title: "", date: "", description: "", processId: "", status: "pendente" });
-      } else {
+        setDeadlineFormData({
+          title: "",
+          date: "",
+          description: "",
+          processId: "",
+          status: "pendente",
+        });
+
+      } catch (error) {
+        console.error("Erro ao salvar prazo:", error);
         alert("Erro ao salvar prazo.");
       }
     }
@@ -417,33 +467,72 @@ export default function DashboardPage() {
   }
 
 
-  async function handleClientSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleClientSubmit(
+    e: React.FormEvent<HTMLFormElement>
+  ) {
     e.preventDefault();
 
-    const method = editingClient ? "PUT" : "POST";
-    const url = editingClient ? `/api/clients/${editingClient._id}` : "/api/clients";
+    const errors: any = {};
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(clientFormData),
-    });
+    if (!clientFormData.name?.trim()) {
+      errors.name = "O nome é obrigatório";
+    }
 
-    if (res.ok) {
+    if (!clientFormData.email?.trim()) {
+      errors.email = "O e-mail é obrigatório";
+    } else if (!/\S+@\S+\.\S+/.test(clientFormData.email)) {
+      errors.email = "E-mail inválido";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setClientErrors(errors);
+      return;
+    }
+
+    setClientErrors({});
+
+    try {
+      const method = editingClient ? "PUT" : "POST";
+      const url = editingClient
+        ? `/api/clients/${editingClient._id}`
+        : "/api/clients";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(clientFormData),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro ao salvar cliente");
+      }
+
       const updated = await res.json();
+
       if (editingClient) {
-        setClients((prev) => prev.map((c) => (c._id === updated._id ? updated : c)));
+        setClients((prev) =>
+          prev.map((c) => (c._id === updated._id ? updated : c))
+        );
         setEditingClient(null);
       } else {
         setClients((prev) => [...prev, updated]);
       }
+
+      // Resetar tudo corretamente
       setShowClientForm(false);
-      setClientFormData({ name: "", email: "", phone: "" });
-    } else {
-      alert("Erro ao salvar cliente.");
+      setClientFormData({
+        name: "",
+        email: "",
+        phone: "",
+        notes: "",
+      });
+      setClientErrors({});
+
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao salvar cliente. Tente novamente.");
     }
   }
-
   async function handleClientDelete(id: string) {
     if (!confirm("Deseja realmente excluir este cliente?")) return;
     const res = await fetch(`/api/clients/${id}`, { method: "DELETE" });
@@ -489,26 +578,59 @@ export default function DashboardPage() {
 
   async function handleFinanceSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const method = editingFinance ? "PUT" : "POST";
-    const url = editingFinance ? `/api/finances/${editingFinance._id}` : "/api/finances";
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(financeFormData),
-    });
+    if (!financeFormData.description?.trim()) {
+      alert("A descrição é obrigatória.");
+      return;
+    }
 
-    if (res.ok) {
+    if (!financeFormData.value || financeFormData.value <= 0) {
+      alert("Informe um valor válido maior que zero.");
+      return;
+    }
+
+    if (!financeFormData.date) {
+      alert("A data é obrigatória.");
+      return;
+    }
+
+    try {
+      const method = editingFinance ? "PUT" : "POST";
+      const url = editingFinance
+        ? `/api/finances/${editingFinance._id}`
+        : "/api/finances";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(financeFormData),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro na requisição");
+      }
+
       const updated = await res.json();
+
       if (editingFinance) {
-        setFinances((prev) => prev.map((f) => (f._id === updated._id ? updated : f)));
+        setFinances((prev) =>
+          prev.map((f) => (f._id === updated._id ? updated : f))
+        );
         setEditingFinance(null);
       } else {
         setFinances((prev) => [...prev, updated]);
       }
+
       setShowFinanceForm(false);
-      setFinanceFormData({ type: "entrada", description: "", value: 0, date: "" });
-    } else {
+      setFinanceFormData({
+        type: "entrada",
+        description: "",
+        value: 0,
+        date: "",
+      });
+
+    } catch (error) {
+      console.error("Erro ao salvar registro financeiro:", error);
       alert("Erro ao salvar registro financeiro.");
     }
   }
@@ -606,72 +728,111 @@ export default function DashboardPage() {
             {showForm && (
               <form
                 onSubmit={handleSubmit}
-                className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-3"
+                className="bg-white shadow-xl rounded-2xl p-8 mb-8 flex flex-col gap-6 border border-gray-200"
               >
-                <h3 className="text-lg font-semibold text-black mb-2">
+                <h3 className="text-xl font-semibold text-black">
                   {editingCase ? "Editar Processo" : "Novo Processo"}
                 </h3>
-                <input
-                  type="text"
-                  placeholder="Título do processo"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="border p-2 rounded"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Número do processo"
-                  value={formData.number}
-                  onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                  className="border p-2 rounded"
-                  required
-                />
 
-                <select
-                  value={typeof formData.clientId === "object" ? formData.clientId._id : formData.clientId}
-                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                  className="border p-2 rounded"
-                >
-                  <option value="">Selecione o Cliente</option>
+                {/* Informações principais */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                  {clients.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  <div className="flex flex-col">
+                    <label className="text-sm text-gray-600 mb-1">Título do Processo</label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                      required
+                    />
+                  </div>
 
+                  <div className="flex flex-col">
+                    <label className="text-sm text-gray-600 mb-1">Número do Processo</label>
+                    <input
+                      type="text"
+                      value={formData.number}
+                      onChange={(e) => setFormData({ ...formData, number: e.target.value })}
+                      placeholder="0000000-00.0000.0.00.0000"
+                      className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                      required
+                    />
+                  </div>
 
-                <input
-                  type="text"
-                  placeholder="Status"
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="border p-2 rounded"
-                />
-                <input
-                  type="text"
-                  placeholder="Tribunal"
-                  value={formData.court}
-                  onChange={(e) => setFormData({ ...formData, court: e.target.value })}
-                  className="border p-2 rounded"
-                />
-                <div className="flex gap-3">
-                  <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer">
-                    {editingCase ? "Salvar Alterações" : "Salvar"}
-                  </button>
+                </div>
+
+                {/* Cliente */}
+                <div className="flex flex-col">
+                  <label className="text-sm text-gray-600 mb-1">Cliente</label>
+                  <select
+                    value={typeof formData.clientId === "object" ? formData.clientId._id : formData.clientId}
+                    onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                    required
+                  >
+                    <option value="">Selecione o Cliente</option>
+                    {clients.map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Classificação */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                  <div className="flex flex-col">
+                    <label className="text-sm text-gray-600 mb-1">Status</label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="ativo">Ativo</option>
+                      <option value="suspenso">Suspenso</option>
+                      <option value="arquivado">Arquivado</option>
+                      <option value="finalizado">Finalizado</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-sm text-gray-600 mb-1">Tribunal</label>
+                    <input
+                      type="text"
+                      value={formData.court}
+                      onChange={(e) => setFormData({ ...formData, court: e.target.value })}
+                      className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                    />
+                  </div>
+
+                </div>
+
+                {/* Botões */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+
                   <button
                     type="button"
                     onClick={() => {
                       setShowForm(false);
                       setEditingCase(null);
-                      setFormData({ title: "", number: "", status: "", court: "" });
+                      setFormData({ title: "", number: "", status: "", court: "", clientId: "" });
                     }}
-                    className="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-pointer"
+                    className="px-5 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
                   >
                     Cancelar
                   </button>
+
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-lg bg-black text-white hover:opacity-90 transition"
+                  >
+                    {editingCase ? "Salvar Alterações" : "Salvar Processo"}
+                  </button>
+
                 </div>
               </form>
             )}
@@ -748,57 +909,108 @@ export default function DashboardPage() {
             {showClientForm && (
               <form
                 onSubmit={handleClientSubmit}
-                className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-3"
+                className="bg-white shadow-xl rounded-2xl p-8 mb-6 flex flex-col gap-5 border border-gray-100"
               >
-                <h3 className="text-lg font-semibold text-black mb-2">
+                <h3 className="text-xl font-semibold text-black">
                   {editingClient ? "Editar Cliente" : "Novo Cliente"}
                 </h3>
 
-                <input
-                  type="text"
-                  placeholder="Nome"
-                  value={clientFormData.name}
-                  onChange={(e) => setClientFormData({ ...clientFormData, name: e.target.value })}
-                  className="border p-2 rounded"
-                  required
-                />
-                <input
-                  type="email"
-                  placeholder="E-mail"
-                  value={clientFormData.email}
-                  onChange={(e) => setClientFormData({ ...clientFormData, email: e.target.value })}
-                  className="border p-2 rounded"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Telefone"
-                  value={clientFormData.phone}
-                  onChange={(e) => setClientFormData({ ...clientFormData, phone: e.target.value })}
-                  className="border p-2 rounded"
-                />
+                {/* Nome */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">Nome *</label>
+                  <input
+                    type="text"
+                    value={clientFormData.name}
+                    onChange={(e) =>
+                      setClientFormData({ ...clientFormData, name: e.target.value })
+                    }
+                    className={`border p-3 rounded-lg focus:outline-none focus:ring-2 transition ${
+                      clientErrors.name
+                        ? "border-red-500 focus:ring-red-200"
+                        : "border-gray-300 focus:ring-black/10"
+                    }`}
+                  />
+                  {clientErrors.name && (
+                    <span className="text-red-500 text-xs">{clientErrors.name}</span>
+                  )}
+                </div>
 
+                {/* Email */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">E-mail *</label>
+                  <input
+                    type="email"
+                    value={clientFormData.email}
+                    onChange={(e) =>
+                      setClientFormData({ ...clientFormData, email: e.target.value })
+                    }
+                    className={`border p-3 rounded-lg focus:outline-none focus:ring-2 transition ${
+                      clientErrors.email
+                        ? "border-red-500 focus:ring-red-200"
+                        : "border-gray-300 focus:ring-black/10"
+                    }`}
+                  />
+                  {clientErrors.email && (
+                    <span className="text-red-500 text-xs">{clientErrors.email}</span>
+                  )}
+                </div>
 
-                <label className="text-sm text-gray-600">Observações</label>
-                <textarea
-                  placeholder="Observações sobre o cliente (ex: prefere WhatsApp, assunto, etc.)"
-                  value={clientFormData.notes || ""}
-                  onChange={(e) => setClientFormData({ ...clientFormData, notes: e.target.value })}
-                  className="border p-2 rounded h-24 resize-none"
-                />
+                {/* Telefone */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">Telefone</label>
+                  <input
+                    type="text"
+                    value={clientFormData.phone}
+                    onChange={(e) =>
+                      setClientFormData({
+                        ...clientFormData,
+                        phone: e.target.value,
+                      })
+                    }
+                    className="border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-black/10 transition"
+                  />
+                </div>
 
-                <div className="flex gap-3">
-                  <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer">
-                    {editingClient ? "Salvar Alterações" : "Salvar"}
+                {/* Observações */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-gray-700">
+                    Observações
+                  </label>
+                  <textarea
+                    value={clientFormData.notes || ""}
+                    onChange={(e) =>
+                      setClientFormData({
+                        ...clientFormData,
+                        notes: e.target.value,
+                      })
+                    }
+                    className="border border-gray-300 p-3 rounded-lg h-28 resize-none focus:outline-none focus:ring-2 focus:ring-black/10 transition"
+                  />
+                </div>
+
+                {/* Botões */}
+                <div className="flex gap-3 mt-4">
+                  <button
+                    type="submit"
+                    className="bg-black text-white px-6 py-3 rounded-xl hover:opacity-90 transition font-medium"
+                  >
+                    {editingClient ? "Salvar Alterações" : "Salvar Cliente"}
                   </button>
+
                   <button
                     type="button"
                     onClick={() => {
                       setShowClientForm(false);
                       setEditingClient(null);
-                      setClientFormData({ name: "", email: "", phone: "" });
+                      setClientFormData({
+                        name: "",
+                        email: "",
+                        phone: "",
+                        notes: "",
+                      });
+                      setClientErrors({});
                     }}
-                    className="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-pointer"
+                    className="bg-gray-200 text-black px-6 py-3 rounded-xl hover:bg-gray-300 transition font-medium"
                   >
                     Cancelar
                   </button>
@@ -918,54 +1130,122 @@ export default function DashboardPage() {
               {showDeadlineForm && (
                 <form
                   onSubmit={handleDeadlineSubmit}
-                  className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-3"
+                  className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-4"
                 >
                   <h3 className="text-lg font-semibold text-black mb-2">
                     {editingDeadline ? "Editar Prazo" : "Novo Prazo"}
                   </h3>
 
-                  <input
-                    type="text"
-                    placeholder="Título"
-                    value={deadlineFormData.title}
-                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, title: e.target.value })}
-                    className="border p-2 rounded"
-                    required
-                  />
-                  <input
-                    type="datetime-local"
-                    value={deadlineFormData.date}
-                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, date: e.target.value })}
-                    className="border p-2 rounded"
-                    required
-                  />
+                  {/* Título */}
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Título do prazo"
+                      value={deadlineFormData.title}
+                      onChange={(e) =>
+                        setDeadlineFormData({ ...deadlineFormData, title: e.target.value })
+                      }
+                      className={`border p-2 rounded w-full ${
+                        deadlineErrors.title ? "border-red-500" : ""
+                      }`}
+                    />
+                    {deadlineErrors.title && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {deadlineErrors.title}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Data */}
+                  <div>
+                    <input
+                      type="datetime-local"
+                      value={deadlineFormData.date}
+                      onChange={(e) =>
+                        setDeadlineFormData({ ...deadlineFormData, date: e.target.value })
+                      }
+                      className={`border p-2 rounded w-full ${
+                        deadlineErrors.date ? "border-red-500" : ""
+                      }`}
+                    />
+                    {deadlineErrors.date && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {deadlineErrors.date}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Processo vinculado */}
+                  <div>
+                    <select
+                      value={deadlineFormData.processId}
+                      onChange={(e) =>
+                        setDeadlineFormData({
+                          ...deadlineFormData,
+                          processId: e.target.value,
+                        })
+                      }
+                      className="border p-2 rounded w-full"
+                    >
+                      <option value="">Vincular a um processo (opcional)</option>
+                      {cases.map((proc) => (
+                        <option key={proc._id} value={proc._id}>
+                          {proc.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <select
+                      value={deadlineFormData.status}
+                      onChange={(e) =>
+                        setDeadlineFormData({ ...deadlineFormData, status: e.target.value })
+                      }
+                      className="border p-2 rounded w-full"
+                    >
+                      <option value="pendente">Pendente</option>
+                      <option value="concluído">Concluído</option>
+                    </select>
+                  </div>
+
+                  {/* Descrição */}
                   <textarea
-                    placeholder="Descrição"
+                    placeholder="Descrição (opcional)"
                     value={deadlineFormData.description}
-                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, description: e.target.value })}
+                    onChange={(e) =>
+                      setDeadlineFormData({
+                        ...deadlineFormData,
+                        description: e.target.value,
+                      })
+                    }
                     className="border p-2 rounded h-24 resize-none"
                   />
-                  <select
-                    value={deadlineFormData.status}
-                    onChange={(e) => setDeadlineFormData({ ...deadlineFormData, status: e.target.value })}
-                    className="border p-2 rounded"
-                  >
-                    <option value="pendente">Pendente</option>
-                    <option value="concluído">Concluído</option>
-                  </select>
 
                   <div className="flex gap-3">
-                    <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer">
+                    <button
+                      type="submit"
+                      className="bg-black text-white px-4 py-2 rounded-lg"
+                    >
                       {editingDeadline ? "Salvar Alterações" : "Salvar"}
                     </button>
+
                     <button
                       type="button"
                       onClick={() => {
                         setShowDeadlineForm(false);
                         setEditingDeadline(null);
-                        setDeadlineFormData({ title: "", date: "", description: "", processId: "", status: "pendente" });
+                        setDeadlineFormData({
+                          title: "",
+                          date: "",
+                          description: "",
+                          processId: "",
+                          status: "pendente",
+                        });
+                        setDeadlineErrors({});
                       }}
-                      className="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-pointer"
+                      className="bg-gray-400 text-white px-4 py-2 rounded-lg"
                     >
                       Cancelar
                     </button>
@@ -1083,58 +1363,128 @@ export default function DashboardPage() {
               {showFinanceForm && (
                 <form
                   onSubmit={handleFinanceSubmit}
-                  className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-3"
+                  className="bg-white shadow-md rounded-lg p-6 mb-6 flex flex-col gap-4"
                 >
                   <h3 className="text-lg font-semibold text-black mb-2">
                     {editingFinance ? "Editar Registro" : "Novo Registro"}
                   </h3>
 
-                  <select
-                    value={financeFormData.type}
-                    onChange={(e) => setFinanceFormData({ ...financeFormData, type: e.target.value })}
-                    className="border p-2 rounded"
-                  >
-                    <option value="entrada">Entrada</option>
-                    <option value="saida">Saída</option>
-                  </select>
+                  {/* Tipo */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Tipo <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={financeFormData.type}
+                      onChange={(e) =>
+                        setFinanceFormData({ ...financeFormData, type: e.target.value })
+                      }
+                      className="border p-2 rounded focus:ring-2 focus:ring-black outline-none"
+                    >
+                      <option value="entrada">Entrada</option>
+                      <option value="saida">Saída</option>
+                    </select>
+                  </div>
 
-                  <input
-                    type="text"
-                    placeholder="Descrição"
-                    value={financeFormData.description}
-                    onChange={(e) => setFinanceFormData({ ...financeFormData, description: e.target.value })}
-                    className="border p-2 rounded"
-                    required
-                  />
+                  {/* Descrição */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Descrição <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={financeFormData.description}
+                      onChange={(e) =>
+                        setFinanceFormData({ ...financeFormData, description: e.target.value })
+                      }
+                      className={`border p-2 rounded outline-none ${
+                        financeErrors.description
+                          ? "border-red-500"
+                          : "focus:ring-2 focus:ring-black"
+                      }`}
+                    />
+                    {financeErrors.description && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {financeErrors.description}
+                      </span>
+                    )}
+                  </div>
 
-                  <input
-                    type="number"
-                    placeholder="Valor"
-                    value={financeFormData.value}
-                    onChange={(e) => setFinanceFormData({ ...financeFormData, value: parseFloat(e.target.value) })}
-                    className="border p-2 rounded"
-                    required
-                  />
+                  {/* Valor */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Valor (R$) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={financeFormData.value || ""}
+                      onChange={(e) =>
+                        setFinanceFormData({
+                          ...financeFormData,
+                          value: parseFloat(e.target.value),
+                        })
+                      }
+                      className={`border p-2 rounded outline-none ${
+                        financeErrors.value
+                          ? "border-red-500"
+                          : "focus:ring-2 focus:ring-black"
+                      }`}
+                    />
+                    {financeErrors.value && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {financeErrors.value}
+                      </span>
+                    )}
+                  </div>
 
-                  <input
-                    type="date"
-                    value={financeFormData.date}
-                    onChange={(e) => setFinanceFormData({ ...financeFormData, date: e.target.value })}
-                    className="border p-2 rounded"
-                  />
+                  {/* Data */}
+                  <div className="flex flex-col">
+                    <label className="text-sm font-medium text-gray-700 mb-1">
+                      Data <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={financeFormData.date}
+                      onChange={(e) =>
+                        setFinanceFormData({ ...financeFormData, date: e.target.value })
+                      }
+                      className={`border p-2 rounded outline-none ${
+                        financeErrors.date
+                          ? "border-red-500"
+                          : "focus:ring-2 focus:ring-black"
+                      }`}
+                    />
+                    {financeErrors.date && (
+                      <span className="text-red-500 text-xs mt-1">
+                        {financeErrors.date}
+                      </span>
+                    )}
+                  </div>
 
-                  <div className="flex gap-3">
-                    <button type="submit" className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer">
+                  <div className="flex gap-3 mt-2">
+                    <button
+                      type="submit"
+                      className="bg-black text-white px-4 py-2 rounded-lg cursor-pointer hover:opacity-90 transition"
+                    >
                       {editingFinance ? "Salvar Alterações" : "Salvar"}
                     </button>
+
                     <button
                       type="button"
                       onClick={() => {
                         setShowFinanceForm(false);
                         setEditingFinance(null);
-                        setFinanceFormData({ type: "entrada", description: "", value: 0, date: "" });
+                        setFinanceFormData({
+                          type: "entrada",
+                          description: "",
+                          value: 0,
+                          date: "",
+                        });
+                        setFinanceErrors({});
                       }}
-                      className="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-pointer"
+                      className="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-pointer hover:opacity-90 transition"
                     >
                       Cancelar
                     </button>
