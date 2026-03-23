@@ -674,6 +674,8 @@ export default function DashboardPage() {
       return null;
     }
 
+  const firstName = session?.user?.name?.split(" ")[0];
+
   const renderContent = () => {
     switch (selectedPage) {
       case "processos":
@@ -1711,7 +1713,7 @@ export default function DashboardPage() {
         return (
           <section>
             <h1 className="text-2xl font-semibold mb-2 text-black">
-              Bem-vindo de volta!
+              Bem-vindo de volta{firstName ? `, ${firstName}` : ""}!
             </h1>
             <p className="text-gray-600 mb-8">
               Aqui você acompanha tudo o que importa no seu escritório.
