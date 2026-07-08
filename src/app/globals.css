@@ -1,51 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+* {
+  box-sizing: border-box;
+  list-style: none;
+  text-decoration: none;
+  scroll-behavior: smooth;
 }
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-*{
-  font-family: "Open Sans", sans-serif;
-}
-
-
 
 .fc .fc-button {
   background-color: #000 !important;
   border: none !important;
-  border-radius: 0.5rem !important; 
+  border-radius: 0.5rem !important;
   padding: 0.5rem 1rem !important;
   font-weight: 500;
   margin: 3px;
 }
 
-
 .fc .fc-button:hover {
   background-color: #111 !important;
 }
-
 
 .fc .fc-button.fc-button-active {
   background-color: #000 !important;
   box-shadow: inset 0 0 0 1px #333;
 }
-
 
 .fc .fc-button:disabled {
   background-color: #444 !important;
