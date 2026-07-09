@@ -11,6 +11,10 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { signOut } from "next-auth/react";
 
+type FormErrors = {
+  [key: string]: string;
+};
+
 const menuItems = [
   { key: "dashboard", label: "Início", icon: "/icons/dashboard.png" },
   { key: "processos", label: "Processos", icon: "/icons/processIcon.png" },
@@ -53,12 +57,41 @@ type Deadline = {
   status?: "pendente" | "concluído";
 };
 
+type Settings = {
+  name: string;
+  email: string;
+  phone: string;
+  companyName: string;
+  cnpj: string;
+};
+
 interface FinanceFormData {
   type: string;
   description: string;
   value: number;
   date: string;
 }
+
+type Document = {
+  _id: string;
+  title: string;
+  type: string;
+  client?: string;
+  clientId?: string;
+  processId?: string;
+  url?: string;
+  description?: string;
+  tags?: string[];
+  date?: string;
+};
+
+type Finance = {
+  _id: string;
+  type: "entrada" | "saida";
+  description: string;
+  value: number;
+  date: string;
+};
 
 interface DocumentFormData {
   title: string;
@@ -102,9 +135,9 @@ export default function DashboardPage() {
     phone: "",
     notes: "",
   });
-  const [clientErrors, setClientErrors] = useState<any>({});
-  const [deadlineErrors, setDeadlineErrors] = useState<any>({});
-  const [financeErrors, setFinanceErrors] = useState<any>({});
+  const [clientErrors, setClientErrors] = useState<FormErrors>({});
+  const [deadlineErrors, setDeadlineErrors] = useState<FormErrors>({});
+  const [financeErrors, setFinanceErrors] = useState<FormErrors>({});
 
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [showDeadlineForm, setShowDeadlineForm] = useState(false);
@@ -123,9 +156,9 @@ export default function DashboardPage() {
     totalDeadlines: 0,
   });
 
-  const [finances, setFinances] = useState<any[]>([]);
+  const [finances, setFinances] = useState<Finance[]>([]);
   const [showFinanceForm, setShowFinanceForm] = useState(false);
-  const [editingFinance, setEditingFinance] = useState<any | null>(null);
+  const [editingFinance, setEditingFinance] = useState<Finance | null>(null);
   const [financeFormData, setFinanceFormData] = useState<FinanceFormData>({
     type: "entrada",
     description: "",
@@ -146,14 +179,14 @@ export default function DashboardPage() {
     date: "",
   };
 
-  const [documents, setDocuments] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [showDocumentForm, setShowDocumentForm] = useState(false);
-  const [editingDocument, setEditingDocument] = useState<any | null>(null);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [documentFormData, setDocumentFormData] = useState<DocumentFormData>(
     initialDocumentFormData,
   );
 
-  const [settingsData, setSettingsData] = useState<any>({
+  const [settingsData, setSettingsData] = useState<Settings>({
     name: "",
     email: "",
     phone: "",
@@ -233,7 +266,7 @@ export default function DashboardPage() {
     setDocumentFormData(initialDocumentFormData);
   }
 
-  function handleDocumentEdit(doc: any) {
+  function handleDocumentEdit(doc: Document) {
     setEditingDocument(doc);
     setDocumentFormData({
       title: doc.title || "",
@@ -317,7 +350,7 @@ export default function DashboardPage() {
   async function handleDeadlineSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const errors: any = {};
+    const errors: FormErrors = {};
 
     // Validação título
     if (!deadlineFormData.title?.trim()) {
@@ -498,7 +531,7 @@ export default function DashboardPage() {
   async function handleClientSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    const errors: any = {};
+    const errors: FormErrors = {};
 
     if (!clientFormData.name?.trim()) {
       errors.name = "O nome é obrigatório";
@@ -658,7 +691,7 @@ export default function DashboardPage() {
     }
   }
 
-  function handleFinanceEdit(item: any) {
+  function handleFinanceEdit(item: Finance) {
     setEditingFinance(item);
     setFinanceFormData({
       type: item.type,
@@ -1869,25 +1902,24 @@ export default function DashboardPage() {
 
                     {doc.clientId && (
                       <p className="text-gray-500 text-sm">
-                        Cliente: {doc.clientId?.name}
+                        Cliente: {doc.clientId}
                       </p>
                     )}
 
                     {doc.processId && (
                       <p className="text-gray-500 text-sm">
-                        Processo: {doc.processId?.title}
+                        Processo: {doc.processId}
                       </p>
                     )}
 
                     <div className="flex gap-2 mt-3">
                       <a
-                        href={doc.fileUrl}
+                        href={doc.url} // 👈 TROCA AQUI
                         target="_blank"
                         className="bg-black text-white px-3 py-1 rounded-lg"
                       >
                         Baixar
                       </a>
-
                       <button
                         onClick={() => handleDocumentEdit(doc)}
                         className="bg-black text-white px-3 py-1 rounded-lg"
