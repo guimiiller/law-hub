@@ -5,7 +5,7 @@ import { auth } from "@/lib/authOptions";
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await connectDB();
@@ -15,21 +15,23 @@ export async function PUT(
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    const { id } = await params; // ✅ CORREÇÃO
+
     const body = await req.json();
 
     const updated = await Case.findOneAndUpdate(
       {
-        _id: params.id,
-        userId: session.user.id, 
+        _id: id,
+        userId: session.user.id,
       },
       body,
-      { new: true }
+      { new: true },
     ).populate("clientId");
 
     if (!updated) {
       return NextResponse.json(
         { error: "Processo não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -38,14 +40,14 @@ export async function PUT(
     console.error("Erro ao atualizar processo:", err);
     return NextResponse.json(
       { error: "Erro ao atualizar processo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await connectDB();
@@ -55,15 +57,17 @@ export async function DELETE(
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    const { id } = await params; // ✅ CORREÇÃO
+
     const deleted = await Case.findOneAndDelete({
-      _id: params.id,
-      userId: session.user.id, 
+      _id: id,
+      userId: session.user.id,
     });
 
     if (!deleted) {
       return NextResponse.json(
         { error: "Processo não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -74,7 +78,7 @@ export async function DELETE(
     console.error("Error to delete process:", error);
     return NextResponse.json(
       { error: "Error to delete process" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

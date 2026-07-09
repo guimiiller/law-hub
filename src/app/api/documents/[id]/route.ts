@@ -5,13 +5,10 @@ import { writeFile } from "fs/promises";
 import path from "path";
 import { auth } from "@/lib/authOptions";
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     await connectDB();
 
@@ -20,9 +17,11 @@ export async function GET(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    const { id } = await params; // ✅ CORREÇÃO
+
     const doc = await Document.findOne({
-      _id: params.id,
-      userId: session.user.id, 
+      _id: id,
+      userId: session.user.id,
     })
       .populate("clientId")
       .populate("processId");
@@ -30,7 +29,7 @@ export async function GET(req: Request, { params }: RouteParams) {
     if (!doc) {
       return NextResponse.json(
         { error: "Documento não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -39,12 +38,15 @@ export async function GET(req: Request, { params }: RouteParams) {
     console.error("Erro ao buscar documento:", error);
     return NextResponse.json(
       { error: "Erro ao buscar documento" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-export async function PUT(req: Request, { params }: RouteParams) {
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     await connectDB();
 
@@ -52,6 +54,8 @@ export async function PUT(req: Request, { params }: RouteParams) {
     if (!session) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
+
+    const { id } = await params; // ✅ CORREÇÃO
 
     const form = await req.formData();
 
@@ -68,7 +72,16 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     const file = form.get("file") as File | null;
 
-    const updateData: any = {
+    // ✅ TIPAGEM MELHOR (sem any)
+    const updateData: {
+      title: string;
+      type: string;
+      description: string;
+      tags: string[];
+      clientId: string | null;
+      processId: string | null;
+      fileUrl?: string;
+    } = {
       title,
       type,
       description,
@@ -89,11 +102,11 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
     const updated = await Document.findOneAndUpdate(
       {
-        _id: params.id,
-        userId: session.user.id, 
+        _id: id,
+        userId: session.user.id,
       },
       updateData,
-      { new: true }
+      { new: true },
     )
       .populate("clientId")
       .populate("processId");
@@ -101,7 +114,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
     if (!updated) {
       return NextResponse.json(
         { error: "Documento não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -110,12 +123,15 @@ export async function PUT(req: Request, { params }: RouteParams) {
     console.error("Erro ao atualizar documento:", error);
     return NextResponse.json(
       { error: "Erro ao atualizar documento" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-export async function DELETE(req: Request, { params }: RouteParams) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
     await connectDB();
 
@@ -124,15 +140,17 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    const { id } = await params; // ✅ CORREÇÃO
+
     const deleted = await Document.findOneAndDelete({
-      _id: params.id,
-      userId: session.user.id, 
+      _id: id,
+      userId: session.user.id,
     });
 
     if (!deleted) {
       return NextResponse.json(
         { error: "Documento não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -141,7 +159,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     console.error("Erro ao deletar documento:", error);
     return NextResponse.json(
       { error: "Erro ao deletar documento" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

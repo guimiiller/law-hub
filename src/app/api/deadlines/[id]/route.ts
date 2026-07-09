@@ -5,10 +5,8 @@ import { auth } from "@/lib/authOptions";
 
 export async function PUT(
   req: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await context.params;
-
   try {
     await connectDB();
 
@@ -16,6 +14,8 @@ export async function PUT(
     if (!session) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
+
+    const { id } = await params; // ✅ padrão correto
 
     const data = await req.json();
 
@@ -25,17 +25,17 @@ export async function PUT(
 
     const updated = await Deadline.findOneAndUpdate(
       {
-        _id: id, 
-        userId: session.user.id, 
+        _id: id,
+        userId: session.user.id,
       },
       data,
-      { new: true }
+      { new: true },
     );
 
     if (!updated) {
       return NextResponse.json(
         { error: "Prazo não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -44,17 +44,15 @@ export async function PUT(
     console.error("Erro ao atualizar prazo:", err);
     return NextResponse.json(
       { error: "Erro ao atualizar prazo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   req: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await context.params;
-
   try {
     await connectDB();
 
@@ -63,15 +61,17 @@ export async function DELETE(
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    const { id } = await params; // ✅ padrão correto
+
     const deleted = await Deadline.findOneAndDelete({
       _id: id,
-      userId: session.user.id, 
+      userId: session.user.id,
     });
 
     if (!deleted) {
       return NextResponse.json(
         { error: "Prazo não encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -79,9 +79,10 @@ export async function DELETE(
       message: "Prazo removido com sucesso",
     });
   } catch (err) {
+    console.error("Erro ao remover prazo:", err); // ✅ faltava log
     return NextResponse.json(
       { error: "Erro ao remover prazo" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
