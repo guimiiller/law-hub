@@ -352,12 +352,10 @@ export default function DashboardPage() {
 
     const errors: FormErrors = {};
 
-    // Validação título
     if (!deadlineFormData.title?.trim()) {
       errors.title = "O título é obrigatório.";
     }
 
-    // Validação data
     if (!deadlineFormData.date) {
       errors.date = "A data é obrigatória.";
     } else {
@@ -369,7 +367,6 @@ export default function DashboardPage() {
       }
     }
 
-    // Se houver erro, interrompe envio
     if (Object.keys(errors).length > 0) {
       setDeadlineErrors(errors);
       return;
@@ -386,7 +383,7 @@ export default function DashboardPage() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(deadlineFormData), // corrigido aqui
+        body: JSON.stringify(deadlineFormData),
       });
 
       if (!res.ok) {
@@ -404,7 +401,6 @@ export default function DashboardPage() {
         setDeadlines((prev) => [...prev, updated]);
       }
 
-      // Resetar form
       setShowDeadlineForm(false);
       setDeadlineFormData({
         title: "",
@@ -577,7 +573,6 @@ export default function DashboardPage() {
         setClients((prev) => [...prev, updated]);
       }
 
-      // Resetar tudo corretamente
       setShowClientForm(false);
       setClientFormData({
         name: "",
@@ -1914,7 +1909,7 @@ export default function DashboardPage() {
 
                     <div className="flex gap-2 mt-3">
                       <a
-                        href={doc.url} // 👈 TROCA AQUI
+                        href={doc.url}
                         target="_blank"
                         className="bg-black text-white px-3 py-1 rounded-lg"
                       >
@@ -2082,32 +2077,32 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
+      {/* SIDEBAR */}
       <aside
-        className={`${
-          menuOpen ? "w-56" : "w-20"
-        } bg-transparent shadow-2xl transition-all duration-300 flex flex-col items-center py-6 relative m-5 rounded-3xl `}
+        className={`
+      ${menuOpen ? "w-56" : "w-20"} 
+      hidden md:flex
+      bg-transparent shadow-2xl transition-all duration-300 
+      flex-col items-center py-6 relative m-5 rounded-3xl
+    `}
       >
+        {/* BOTÃO MENU */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className="absolute top-6 left-6 flex flex-col justify-between w-7 h-5 group cursor-pointer z-50"
+          className="absolute top-6 left-6 flex flex-col justify-between w-7 h-5 cursor-pointer z-50"
         >
           <span
-            className={`h-[3px] w-full bg-black rounded transition-all duration-300 ${
-              menuOpen ? "rotate-45 translate-y-[9px]" : ""
-            }`}
-          ></span>
+            className={`h-0.75 w-full bg-black rounded transition-all duration-300 ${menuOpen ? "rotate-45 translate-y-2.25" : ""}`}
+          />
           <span
-            className={`h-[3px] w-full bg-black rounded transition-all duration-300 ${
-              menuOpen ? "opacity-0" : "opacity-100"
-            }`}
-          ></span>
+            className={`h-0.75 w-full bg-black rounded transition-all duration-300 ${menuOpen ? "opacity-0" : ""}`}
+          />
           <span
-            className={`h-[3px] w-full bg-black rounded transition-all duration-300 ${
-              menuOpen ? "-rotate-45 -translate-y-[8px]" : ""
-            }`}
-          ></span>
+            className={`h-0.75 w-full bg-black rounded transition-all duration-300 ${menuOpen ? "-rotate-45 -translate-y-2" : ""}`}
+          />
         </button>
 
+        {/* MENU */}
         <div className="mt-16 flex flex-col items-center gap-6 w-full">
           {menuItems.map((item) => (
             <div
@@ -2133,7 +2128,6 @@ export default function DashboardPage() {
                   alt={item.label}
                   width={27}
                   height={27}
-                  style={{ objectFit: "contain" }}
                 />
                 {menuOpen && (
                   <span className="text-black text-sm font-medium">
@@ -2141,8 +2135,9 @@ export default function DashboardPage() {
                   </span>
                 )}
               </div>
+
               {!menuOpen && (
-                <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-black text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 pointer-events-none whitespace-nowrap shadow-lg">
+                <div className="absolute left-14 top-1/2 -translate-y-1/2 bg-black text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-300 whitespace-nowrap shadow-lg">
                   {item.label}
                 </div>
               )}
@@ -2150,12 +2145,13 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* LOGOUT */}
         <div className="mt-auto w-full px-4 pb-6">
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className={`flex items-center w-full h-12 rounded-xl transition-all
-              ${menuOpen ? "gap-4 px-4 justify-start" : "justify-center"}
-              bg-black text-white cursor-pointer`}
+          ${menuOpen ? "gap-4 px-4 justify-start" : "justify-center"}
+          bg-black text-white`}
           >
             <Image
               src="/icons/logoutIcon.png"
@@ -2163,13 +2159,31 @@ export default function DashboardPage() {
               width={24}
               height={24}
             />
-
             {menuOpen && <span className="text-sm font-medium">Sair</span>}
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 p-8 transition-all">{renderContent()}</main>
+      {/* MOBILE NAV (BOTTOM) */}
+      <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg flex justify-around items-center py-2 md:hidden z-50">
+        {menuItems.map((item) => (
+          <button
+            key={item.key}
+            onClick={() =>
+              setSelectedPage(item.key === "dashboard" ? "" : item.key)
+            }
+            className="flex flex-col items-center text-xs"
+          >
+            <Image src={item.icon} alt={item.label} width={22} height={22} />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* CONTEÚDO */}
+      <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 transition-all">
+        {renderContent()}
+      </main>
     </div>
   );
 }
