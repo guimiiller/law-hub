@@ -13,19 +13,55 @@ export const authOptions: AuthOptions = {
         password: { label: "Senha", type: "password" },
       },
       async authorize(credentials) {
-        await connectDB();
+        console.log("1 - authorize iniciou");
 
-        const user = await User.findOne({ email: credentials?.email });
-        if (!user) throw new Error("Usuário não encontrado");
+        if (!credentials?.email || !credentials?.password) {
+          console.log("ERRO - credenciais não chegaram");
+          return null;
+        }
 
-        const isValid = await compare(credentials!.password, user.password);
-        if (!isValid) throw new Error("Senha incorreta");
+        try {
+          console.log("2 - conectando MongoDB");
 
-        return {
-          id: user._id.toString(),
-          name: user.name,
-          email: user.email,
-        };
+          await connectDB();
+
+          console.log("3 - MongoDB conectado");
+          console.log("4 - procurando usuário:", credentials.email);
+
+          const user = await User.findOne({
+            email: credentials.email,
+          });
+
+          console.log("5 - busca terminou");
+
+          if (!user) {
+            console.log("ERRO - usuário não encontrado");
+            return null;
+          }
+
+          console.log("6 - usuário encontrado:", user.email);
+          console.log("7 - comparando senha");
+
+          const isValid = await compare(credentials.password, user.password);
+
+          console.log("8 - senha válida:", isValid);
+
+          if (!isValid) {
+            console.log("ERRO - senha incorreta");
+            return null;
+          }
+
+          console.log("9 - LOGIN OK");
+
+          return {
+            id: user._id.toString(),
+            name: user.name,
+            email: user.email,
+          };
+        } catch (error) {
+          console.error("ERRO NO AUTHORIZE:", error);
+          return null;
+        }
       },
     }),
   ],

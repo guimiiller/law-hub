@@ -72,14 +72,35 @@ interface FinanceFormData {
   date: string;
 }
 
+type PopulatedClient = {
+  _id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+};
+
+type PopulatedProcess = {
+  _id: string;
+  title: string;
+  number?: string;
+  status?: string;
+  court?: string;
+};
+
 type Document = {
   _id: string;
   title: string;
   type: string;
+
   client?: string;
-  clientId?: string;
-  processId?: string;
+
+  clientId?: string | PopulatedClient | null;
+  processId?: string | PopulatedProcess | null;
+
   url?: string;
+  fileUrl?: string;
+
   description?: string;
   tags?: string[];
   date?: string;
@@ -105,7 +126,6 @@ interface DocumentFormData {
   file: File | null;
   date: string;
 }
-
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -268,22 +288,31 @@ export default function DashboardPage() {
 
   function handleDocumentEdit(doc: Document) {
     setEditingDocument(doc);
+
     setDocumentFormData({
-      title: doc.title || "",
-      type: doc.type || "",
-      client: doc.client || "",
-      clientId: doc.clientId || "",
-      processId: doc.processId || "",
-      url: doc.url || "",
-      description: doc.description || "",
-      tags: doc.tags || [],
+      title: doc.title ?? "",
+      type: doc.type ?? "",
+      client: doc.client ?? "",
+
+      clientId:
+        typeof doc.clientId === "string"
+          ? doc.clientId
+          : (doc.clientId?._id ?? ""),
+
+      processId:
+        typeof doc.processId === "string"
+          ? doc.processId
+          : (doc.processId?._id ?? ""),
+
+      url: doc.fileUrl ?? doc.url ?? "",
+      description: doc.description ?? "",
+      tags: doc.tags ?? [],
       file: null,
-      date: doc.date?.slice(0, 10) || "",
+      date: doc.date?.slice(0, 10) ?? "",
     });
 
     setShowDocumentForm(true);
   }
-
   async function handleDocumentDelete(id: string) {
     if (!confirm("Tem certeza que deseja excluir este documento?")) return;
 
@@ -1895,15 +1924,15 @@ export default function DashboardPage() {
                       Tipo: {doc.type}
                     </p>
 
-                    {doc.clientId && (
+                    {doc.clientId && typeof doc.clientId !== "string" && (
                       <p className="text-gray-500 text-sm">
-                        Cliente: {doc.clientId}
+                        Cliente: {doc.clientId.name}
                       </p>
                     )}
 
-                    {doc.processId && (
+                    {doc.processId && typeof doc.processId !== "string" && (
                       <p className="text-gray-500 text-sm">
-                        Processo: {doc.processId}
+                        Processo: {doc.processId.title}
                       </p>
                     )}
 
