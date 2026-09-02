@@ -329,10 +329,30 @@ export default function DashboardPage() {
     async function fetchDocuments() {
       try {
         const res = await fetch("/api/documents");
+
+        if (!res.ok) {
+          console.error(
+            "Erro ao buscar documentos:",
+            res.status,
+            await res.text(),
+          );
+
+          setDocuments([]);
+          return;
+        }
+
         const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Resposta inválida de /api/documents:", data);
+          setDocuments([]);
+          return;
+        }
+
         setDocuments(data);
-      } catch (err) {
-        console.error("Erro ao buscar documentos", err);
+      } catch (error) {
+        console.error("Erro ao buscar documentos:", error);
+        setDocuments([]);
       }
     }
 
@@ -348,6 +368,11 @@ export default function DashboardPage() {
           fetch("/api/deadlines"),
         ]);
 
+        if (!casesRes.ok || !clientsRes.ok || !deadlinesRes.ok) {
+          console.error("Erro ao carregar dados do dashboard");
+          return;
+        }
+
         const [casesData, clientsData, deadlinesData] = await Promise.all([
           casesRes.json(),
           clientsRes.json(),
@@ -355,12 +380,16 @@ export default function DashboardPage() {
         ]);
 
         setStats({
-          totalClients: clientsData.length,
-          totalCases: casesData.length,
-          totalDeadlines: deadlinesData.length,
+          totalClients: Array.isArray(clientsData) ? clientsData.length : 0,
+
+          totalCases: Array.isArray(casesData) ? casesData.length : 0,
+
+          totalDeadlines: Array.isArray(deadlinesData)
+            ? deadlinesData.length
+            : 0,
         });
-      } catch (err) {
-        console.error("Erro ao carregar dados do dashboard:", err);
+      } catch (error) {
+        console.error("Erro ao carregar dados do dashboard:", error);
       }
     }
 
@@ -369,10 +398,31 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchDeadlines() {
-      const res = await fetch("/api/deadlines");
-      const data = await res.json();
-      setDeadlines(data);
+      try {
+        const res = await fetch("/api/deadlines");
+
+        if (!res.ok) {
+          console.error("Erro ao buscar prazos:", res.status, await res.text());
+
+          setDeadlines([]);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Resposta inválida de /api/deadlines:", data);
+          setDeadlines([]);
+          return;
+        }
+
+        setDeadlines(data);
+      } catch (error) {
+        console.error("Erro ao buscar prazos:", error);
+        setDeadlines([]);
+      }
     }
+
     fetchDeadlines();
   }, []);
 
@@ -495,10 +545,35 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function fetchCases() {
-      const res = await fetch("/api/processes");
-      const data = await res.json();
-      setCases(data);
+      try {
+        const res = await fetch("/api/processes");
+
+        if (!res.ok) {
+          console.error(
+            "Erro ao buscar processos:",
+            res.status,
+            await res.text(),
+          );
+
+          setCases([]);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Resposta inválida de /api/processes:", data);
+          setCases([]);
+          return;
+        }
+
+        setCases(data);
+      } catch (error) {
+        console.error("Erro ao buscar processos:", error);
+        setCases([]);
+      }
     }
+
     fetchCases();
   }, []);
 
@@ -635,25 +710,66 @@ export default function DashboardPage() {
     async function fetchClients() {
       try {
         const res = await fetch("/api/clients");
+
+        if (!res.ok) {
+          console.error(
+            "Erro ao buscar clientes:",
+            res.status,
+            await res.text(),
+          );
+
+          setClients([]);
+          return;
+        }
+
         const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Resposta inválida de /api/clients:", data);
+          setClients([]);
+          return;
+        }
+
         setClients(data);
-      } catch (err) {
-        console.error("Erro ao buscar clientes:", err);
+      } catch (error) {
+        console.error("Erro ao buscar clientes:", error);
+        setClients([]);
       }
     }
+
     fetchClients();
   }, []);
-
   useEffect(() => {
     async function fetchFinances() {
       try {
         const res = await fetch("/api/finances");
+
+        if (!res.ok) {
+          console.error(
+            "Erro ao buscar registros financeiros:",
+            res.status,
+            await res.text(),
+          );
+
+          setFinances([]);
+          return;
+        }
+
         const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Resposta inválida de /api/finances:", data);
+          setFinances([]);
+          return;
+        }
+
         setFinances(data);
-      } catch (err) {
-        console.error("Erro ao buscar registros financeiros:", err);
+      } catch (error) {
+        console.error("Erro ao buscar registros financeiros:", error);
+        setFinances([]);
       }
     }
+
     fetchFinances();
   }, []);
 
