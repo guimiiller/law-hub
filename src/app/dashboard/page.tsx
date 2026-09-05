@@ -170,12 +170,6 @@ export default function DashboardPage() {
     status: "pendente",
   });
 
-  const [stats, setStats] = useState({
-    totalClients: 0,
-    totalCases: 0,
-    totalDeadlines: 0,
-  });
-
   const [finances, setFinances] = useState<Finance[]>([]);
   const [showFinanceForm, setShowFinanceForm] = useState(false);
   const [editingFinance, setEditingFinance] = useState<Finance | null>(null);
@@ -357,43 +351,6 @@ export default function DashboardPage() {
     }
 
     fetchDocuments();
-  }, []);
-
-  useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        const [casesRes, clientsRes, deadlinesRes] = await Promise.all([
-          fetch("/api/processes"),
-          fetch("/api/clients"),
-          fetch("/api/deadlines"),
-        ]);
-
-        if (!casesRes.ok || !clientsRes.ok || !deadlinesRes.ok) {
-          console.error("Erro ao carregar dados do dashboard");
-          return;
-        }
-
-        const [casesData, clientsData, deadlinesData] = await Promise.all([
-          casesRes.json(),
-          clientsRes.json(),
-          deadlinesRes.json(),
-        ]);
-
-        setStats({
-          totalClients: Array.isArray(clientsData) ? clientsData.length : 0,
-
-          totalCases: Array.isArray(casesData) ? casesData.length : 0,
-
-          totalDeadlines: Array.isArray(deadlinesData)
-            ? deadlinesData.length
-            : 0,
-        });
-      } catch (error) {
-        console.error("Erro ao carregar dados do dashboard:", error);
-      }
-    }
-
-    fetchDashboardData();
   }, []);
 
   useEffect(() => {
@@ -2181,7 +2138,7 @@ export default function DashboardPage() {
                   Prazos cadastrados
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
-                  {stats.totalDeadlines} no total
+                  {deadlines.length} no total
                 </p>
               </div>
 
@@ -2196,7 +2153,7 @@ export default function DashboardPage() {
                   Processos ativos
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
-                  {stats.totalCases} em andamento
+                  {cases.length} em andamento
                 </p>
               </div>
 
@@ -2211,7 +2168,7 @@ export default function DashboardPage() {
                   Clientes
                 </p>
                 <p className="text-gray-500 text-sm mt-1">
-                  {stats.totalClients} cadastrados
+                  {clients.length} cadastrados
                 </p>
               </div>
             </section>
