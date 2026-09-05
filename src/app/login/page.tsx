@@ -46,7 +46,11 @@ export default function Login() {
       return;
     }
 
-    setErrors({ email: "", password: "", general: "" });
+    setErrors({
+      email: "",
+      password: "",
+      general: "",
+    });
 
     setLoading(true);
 
@@ -68,73 +72,166 @@ export default function Login() {
       });
     }
   };
+
   return (
     <>
       <HeaderLogo />
-      <div className="flex items-center justify-center h-screen bg-[linear-gradient(to_bottom,_#EFF0F5_0%,_#DADBE0_46%)] px-4">
-        <div className="border border-black shadow-xl rounded-2xl px-8 py-10 w-full max-w-md text-slate-100">
-          <h1 className="text-2xl font-semibold text-center mb-6 text-black">
-            Login
-          </h1>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input
-                type="email"
-                placeholder="E-mail"
-                className={`w-full px-3 py-2 rounded-lg border text-slate-900 placeholder-slate-400 focus:outline-none transition
-                  ${errors.email ? "border-red-500" : "border-black"}
-                `}
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
+      <main className="h-screen overflow-hidden bg-[#F7F7F8] px-5 pt-24 pb-6 sm:px-8">
+        <div className="mx-auto flex h-full max-w-6xl items-center justify-center">
+          <div className="w-full max-w-105">
+            {/* Header */}
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl border border-[#E1E1E5] bg-white shadow-sm">
+                <span className="text-lg font-semibold tracking-[-0.04em] text-[#111116]">
+                  LH
+                </span>
+              </div>
 
-              {errors.email && (
-                <p className="text-red-500 text-sm">
-                  {errors.email}
-                </p>
-              )}
-              <input
-                type="password"
-                placeholder="Senha"
-                className={`w-full px-3 py-2 rounded-lg border text-slate-900 placeholder-slate-400 focus:outline-none transition
-                  ${errors.password ? "border-red-500" : "border-black"}
-                `}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-              />
+              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[#111116]">
+                Bem-vindo de volta
+              </h1>
 
-              {errors.password && (
-                <p className="text-red-500 text-sm">
-                  {errors.password}
-                </p>
-              )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-black  text-white py-2 rounded-lg font-medium transition cursor-pointer disabled:opacity-70"
-            >
-              {loading ? "Entrando..." : "Entrar"}
-            </button>
-            {errors.general && (
-              <p className="text-red-500 text-sm text-center mt-1">
-                {errors.general}
+              <p className="mt-2 text-sm leading-relaxed text-[#77787E]">
+                Entre na sua conta para acessar seu escritório.
               </p>
-            )}
-          </form>
+            </div>
 
-          <div className="text-center mt-6">
-            <p className="text-sm text-slate-900">
-              Ainda não tem uma conta?{" "}
-              <Link
-                href="/register"
-                className="text-slate-500 hover:text-slate-300 font-medium transition"
-              >
-                Criar conta
-              </Link>
+            {/* Card */}
+            <div className="rounded-2xl border border-[#E1E1E5] bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.04)] sm:p-8">
+              <form onSubmit={handleLogin} className="space-y-5">
+                {/* Email */}
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="mb-2 block text-sm font-medium text-[#25252A]"
+                  >
+                    E-mail
+                  </label>
+
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    autoComplete="email"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        email: e.target.value,
+                      })
+                    }
+                    className={`h-11 w-full rounded-lg border bg-[#FAFAFB] px-3.5 text-sm text-[#111116] outline-none transition-all placeholder:text-[#A6A7AC]
+                      ${
+                        errors.email
+                          ? "border-red-400 focus:border-red-500"
+                          : "border-[#DEDEE2] focus:border-[#A4A4AA] focus:bg-white"
+                      }
+                    `}
+                  />
+
+                  {errors.email && (
+                    <p className="mt-1.5 text-xs text-red-500">
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                {/* Senha */}
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label
+                      htmlFor="password"
+                      className="text-sm font-medium text-[#25252A]"
+                    >
+                      Senha
+                    </label>
+
+                    <span className="text-xs text-[#8A8B91]">Sua senha</span>
+                  </div>
+
+                  <input
+                    id="password"
+                    type="password"
+                    placeholder="Digite sua senha"
+                    autoComplete="current-password"
+                    value={form.password}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        password: e.target.value,
+                      })
+                    }
+                    className={`h-11 w-full rounded-lg border bg-[#FAFAFB] px-3.5 text-sm text-[#111116] outline-none transition-all placeholder:text-[#A6A7AC]
+                      ${
+                        errors.password
+                          ? "border-red-400 focus:border-red-500"
+                          : "border-[#DEDEE2] focus:border-[#A4A4AA] focus:bg-white"
+                      }
+                    `}
+                  />
+
+                  {errors.password && (
+                    <p className="mt-1.5 text-xs text-red-500">
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                {/* Erro geral */}
+                {errors.general && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-3">
+                    <p className="text-center text-xs text-red-600">
+                      {errors.general}
+                    </p>
+                  </div>
+                )}
+
+                {/* Login */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex h-11 w-full cursor-pointer items-center justify-center rounded-lg bg-[#111116] px-5 text-sm font-medium text-white transition-colors hover:bg-[#25252B] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Entrando...
+                    </span>
+                  ) : (
+                    "Entrar"
+                  )}
+                </button>
+              </form>
+
+              {/* Divider */}
+              <div className="my-6 flex items-center gap-4">
+                <div className="h-px flex-1 bg-[#E8E8EB]" />
+                <span className="text-[11px] uppercase tracking-wider text-[#A0A1A6]">
+                  Law Hub
+                </span>
+                <div className="h-px flex-1 bg-[#E8E8EB]" />
+              </div>
+
+              {/* Register */}
+              <p className="text-center text-sm text-[#77787E]">
+                Ainda não tem uma conta?{" "}
+                <Link
+                  href="/register"
+                  className="font-medium text-[#111116] transition-opacity hover:opacity-60"
+                >
+                  Criar conta
+                </Link>
+              </p>
+            </div>
+
+            {/* Footer */}
+            <p className="mt-6 text-center text-xs text-[#A0A1A6]">
+              Gerencie seu escritório de forma simples e organizada.
             </p>
           </div>
         </div>
-      </div>
+      </main>
     </>
   );
 }
